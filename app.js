@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  var C = DualSubCore, G = DualSubGemini;
+  var C = DualSubCore, G = DualSubGemini, L = DualSubListening;
   var $ = function (id) { return document.getElementById(id); };
   var storage;
   try { storage = window.localStorage; } catch (_) { storage = null; }
@@ -90,8 +90,9 @@
   var active = -1, lastScrolled = -1, manualUntil = 0, lastSaved = 0;
   var skipped = [], attempts = { network: 0, server: 0 }, retryAt = 0, recoveryError = null, foregroundRetried = false;
   var subtitleSaved = true, positionSaved = true;
-  var lastSentenceStart = null, suppressStop = true, seekSentenceStart = null, wakeLock = null, wakePending = false;
-  var lastCheckedPosition = position, pausedSkipOrigin = null, pausedSkipBlocked = false;
+  var wakeLock = null, wakePending = false, pausedSkipOrigin = null, pausedSkipBlocked = false;
+  var listeningSettings = L.readSettings(storage), listeningState = L.initial(), listeningTimers = {}, pagePauseExpected = false, playbackRate = 1;
+  $('listen').checked = listeningSettings.enabled; $('listen-count').value = String(listeningSettings.repeats); $('listen-gap').value = String(listeningSettings.gap);
   var daily = { date: '', count: 0 };
   try { daily = JSON.parse(storage.getItem('dualsub.requests')) || daily; } catch (_) { daily = { date: '', count: 0 }; }
   updateCount(false);
@@ -103,7 +104,13 @@
   $('youtube-link').href = 'https://www.youtube.com/watch?v=' + id;
   $('video-title').textContent = cache.title || '英語ポッドキャスト';
   $('hide-ja').addEventListener('change', function () { $('sentences').classList.toggle('hide-ja', $('hide-ja').checked); });
-  $('speed').addEventListener('change', function () { if (ready) player.setPlaybackRate(Number($('speed').value)); });
+  $('speed').addEventListener('change', function () { if (ready) { playbackRate = Number($('speed').value); player.setPlaybackRate(playbackRate); listeningEvent({ type: 'tick' }); } });
+  ['listen', 'listen-count', 'listen-gap'].forEach(function (id) { $(id).addEventListener('change', function () {
+    listeningSettings = L.settings({ enabled: $('listen').checked, repeats: $('listen-count').value, gap: $('listen-gap').value });
+    if (!L.writeSettings(storage, listeningSettings)) $('listening-progress').title = '設定を保存できません。この画面の間だけ使用します。';
+    listeningEvent({ type: 'reset' });
+  }); });
+  $('listening-continue').addEventListener('click', function () { listeningEvent({ type: 'continue' }); });
   $('repeat').disabled = true;
   $('repeat').addEventListener('click', function () { var t = C.repeatTarget(cache.sentences, active, position); if (t !== null) seek(t); });
   $('resume').addEventListener('click', function () { resumeTranslation(true); });
@@ -141,6 +148,34 @@
     if (Math.abs(next - position) > 1.5 || (state !== 1 && Math.abs(next - position) > 0.05)) resetPausedSkip();
     position = next;
   }
+  function listeningContext() { return { now: Date.now(), position: position, playerState: player.getPlayerState(), rate: playbackRate, duration: cache.duration, sentences: cache.sentences, ranges: cache.ranges }; }
+  function clearListeningTimers() { Object.keys(listeningTimers).forEach(function (key) { clearTimeout(listeningTimers[key]); }); listeningTimers = {}; }
+  function scheduleListening() {
+    clearListeningTimers();
+    var context = listeningContext(), timers = L.timers(listeningState, context);
+    Object.keys(timers).forEach(function (key) { listeningTimers[key] = setTimeout(function () {
+      if (!ready || embeddedError) return;
+      readPlaybackPosition(player.getPlayerState());
+      listeningEvent({ type: 'tick' }); highlight();
+    }, Math.min(2147483647, timers[key])); });
+    $('listening-status').hidden = !listeningSettings.enabled;
+    $('listening-progress').textContent = L.label(listeningState, listeningSettings, Date.now());
+    $('listening-continue').hidden = listeningState.phase !== 'blocked';
+  }
+  function listeningEvent(event) {
+    if (!ready || embeddedError) return;
+    if (listeningSettings.enabled && event.type !== 'seek') readPlaybackPosition(player.getPlayerState());
+    var result = L.step(listeningState, event, listeningContext(), listeningSettings);
+    listeningState = result.state;
+    clearListeningTimers();
+    result.commands.forEach(function (command) {
+      if (command.type === 'pause') { pagePauseExpected = true; player.pauseVideo(); }
+      else if (command.type === 'play') {
+        position = command.target; resetPausedSkip(); player.seekTo(position, true); player.playVideo(); savePosition(); highlight();
+      }
+    });
+    scheduleListening();
+  }
   function updateCount(increment) {
     var now = new Date(), date = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
     if (daily.date !== date) daily = { date: date, count: 0 };
@@ -176,11 +211,8 @@
     if (!ready || embeddedError) return;
     position = C.clampPosition(t, knownDuration());
     resetPausedSkip();
-    suppressStop = true;
-    var targetIndex = C.currentSentence(cache.sentences, position + 0.5);
-    seekSentenceStart = targetIndex >= 0 ? cache.sentences[targetIndex].seconds : null;
-    player.seekTo(position, true);
-    player.playVideo();
+    if (listeningSettings.enabled) listeningEvent({ type: 'seek', target: position });
+    else { player.seekTo(position, true); player.playVideo(); }
     lastScrolled = -1;
     savePosition();
     highlight();
@@ -214,17 +246,13 @@
     });
     $('sentences').replaceChildren(fragment);
     active = -1; lastScrolled = -1; highlight();
+    if (ready) listeningEvent({ type: 'tick' });
   }
-  function highlight(checkStop) {
+  function highlight() {
     var index = C.currentSentence(cache.sentences, position);
     // Do not highlight a cached sentence belonging to a different translated island.
     var range = cache.ranges.find(function (r) { return position >= r[0] && position < r[1]; });
     if (!range || (index >= 0 && cache.sentences[index].seconds < range[0] - 5)) index = -1;
-    var currentStart = index >= 0 ? cache.sentences[index].seconds : null;
-    var previousIndex = lastSentenceStart === null ? -1 : C.currentSentence(cache.sentences, lastSentenceStart);
-    var pause = checkStop && !suppressStop && $('stop-each').checked && C.shouldPauseSentence(previousIndex, index, lastCheckedPosition, position) && player.getPlayerState() === 1;
-    if (checkStop) { lastSentenceStart = currentStart; lastCheckedPosition = position; if (currentStart !== null && (seekSentenceStart === null || currentStart >= seekSentenceStart)) suppressStop = false; }
-    if (pause) player.pauseVideo();
     var buttons = $('sentences').children;
     if (index !== active) {
       if (active >= 0 && buttons[active]) { buttons[active].firstChild.classList.remove('active'); buttons[active].firstChild.removeAttribute('aria-current'); }
@@ -245,7 +273,8 @@
     if (state === 1) resetPausedSkip();
     if (!duration && state === 1) { status('動画の長さを確認中です。長さが取得できないライブ配信には対応していません。'); return; }
     if (state !== 1 && pausedSkipBlocked) { status('停止中の区間スキップを止めました。シークまたは再生すると続けます。'); return; }
-    var chunk = C.nextChunk(cache.ranges, skipped, position, duration, state, pausedSkipBlocked);
+    var planningState = listeningSettings.enabled && listeningState.phase === 'awaiting' ? 1 : state;
+    var chunk = C.nextChunk(cache.ranges, skipped, position, duration, planningState, pausedSkipBlocked);
     if (!chunk) { status('現在位置は翻訳済み、またはこの画面でスキップ済みです。'); return; }
     if (chunk.skip) { applyOutput({ segments: [], skipped: [[chunk.a, chunk.b]] }, duration, chunk); status('15秒未満の隙間は、この画面の間だけスキップします。'); return; }
     if (!settings.key) { status('設定に Gemini API キーを入力してください。保存済みの字幕は表示できます。'); return; }
@@ -294,16 +323,20 @@
           if (data && data.title) { cache.title = data.title; $('video-title').textContent = data.title; }
           var duration = knownDuration();
           if (duration > 0) position = Math.min(position, Math.max(0, duration - 1));
-          saveSubtitles(); savePosition(); highlight(); translateAhead(); syncWakeLock();
+          saveSubtitles(); savePosition(); highlight(); listeningEvent({ type: 'tick' }); translateAhead(); syncWakeLock();
         },
         onStateChange: function (event) {
           if (event.data === 1) resetPausedSkip();
-          if (ready && !embeddedError && C.shouldReadPosition(event.data)) { readPlaybackPosition(event.data); highlight(true); }
+          if (ready && !embeddedError && C.shouldReadPosition(event.data)) { readPlaybackPosition(event.data); highlight(); }
+          var source = event.data === 2 && pagePauseExpected ? 'page' : 'user';
+          if (event.data === 2) pagePauseExpected = false;
+          listeningEvent({ type: 'state', value: event.data, source: source });
           syncWakeLock();
         },
-        onPlaybackRateChange: function (event) { $('speed').value = String(event.data); },
+        onPlaybackRateChange: function (event) { $('speed').value = String(event.data); playbackRate = event.data; listeningEvent({ type: 'tick' }); },
         onError: function (event) {
           embeddedError = true; halted = true; $('resume').hidden = true;
+          clearListeningTimers(); $('listening-continue').hidden = true;
           retryAt = 0; syncWakeLock();
           var message = [101, 150].includes(event.data) ? 'この動画は埋め込み再生が禁止されています。' : 'YouTube の埋め込みを再生できません（エラー ' + event.data + '）。';
           status(message + '「YouTube で開く」リンクを使用してください。', true);
@@ -320,15 +353,16 @@
     // Before playback starts, Safari can report 0 despite a queued initial seek.
     var state = player.getPlayerState();
     readPlaybackPosition(state);
-    highlight(true);
+    highlight(); listeningEvent({ type: 'tick' });
     if (Date.now() - lastSaved >= 10000) savePosition();
     if (retryAt) { if (Date.now() >= retryAt && !busy) resumeTranslation(false); else showCountdown(); }
     translateAhead();
   }, 500);
-  window.addEventListener('pagehide', function () { savePosition(); if (wakeLock) wakeLock.release().catch(function () { $('watch').dataset.wakeLock = 'release-failed'; }); });
+  window.addEventListener('pagehide', function () { clearListeningTimers(); listeningState.phase = 'paused'; savePosition(); if (wakeLock) wakeLock.release().catch(function () { $('watch').dataset.wakeLock = 'release-failed'; }); });
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) savePosition();
     else if (!busy && !retryAt && recoveryError && (recoveryError.kind === 'network' || recoveryError.kind === 'empty') && !foregroundRetried) { foregroundRetried = true; resumeTranslation(false); }
+    if (!document.hidden && ready) listeningEvent({ type: 'state', value: player.getPlayerState(), source: 'user' });
     syncWakeLock();
   });
 })();

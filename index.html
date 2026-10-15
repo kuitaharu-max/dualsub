@@ -13,6 +13,7 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
   <script defer src="lib/core.js"></script>
+  <script defer src="lib/listening.js"></script>
   <script defer src="lib/gemini.js"></script>
   <script defer src="app.js"></script>
 </head>
@@ -36,13 +37,18 @@
         <label><input id="hide-ja" type="checkbox"> 和訳OFF</label>
         <select id="speed" aria-label="再生速度"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option></select>
         <button id="repeat" type="button" title="今の文をもう一度">もう一度</button>
-        <label><input id="stop-each" type="checkbox"> 1文停止</label>
+        <div class="listening-controls">
+          <label><input id="listen" type="checkbox"> 精聴</label>
+          <label>回数 <select id="listen-count"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
+          <label>間 <select id="listen-gap" aria-label="精聴の間隔（秒）"><option>0</option><option>0.5</option><option>1</option><option selected>1.5</option><option>2</option><option>3</option><option>5</option><option>10</option></select>秒</label>
+        </div>
       </div>
     </div>
     <div class="watch-body">
       <nav><a href="./index.html">← 動画を選ぶ</a><a id="youtube-link" target="_blank" rel="noopener">YouTube で開く ↗</a></nav>
       <p id="status" role="status" aria-live="polite">プレーヤーを読み込み中…</p>
       <div class="status-tools"><small id="today-count">今日の送信：0回</small><button id="resume" type="button" hidden>翻訳を再開</button></div>
+      <div id="listening-status" hidden><small id="listening-progress" role="status" aria-live="polite"></small><button id="listening-continue" type="button" hidden>タップで続ける</button></div>
       <p id="skipped" hidden></p>
       <p id="storage-warning" hidden>保存領域を使えません。字幕・再生位置はこの画面を閉じると失われる場合があります。</p>
       <ol id="sentences" aria-label="英文と和訳"></ol>
