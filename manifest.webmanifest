@@ -1,0 +1,11 @@
+{
+  "name": "DualSub 英語ポッドキャスト",
+  "short_name": "DualSub",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#172b45",
+  "theme_color": "#172b45",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

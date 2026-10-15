@@ -1,0 +1,29 @@
+:root { color-scheme: light dark; --bg: #f5f7fa; --panel: #fff; --text: #172b45; --muted: #52647a; --border: #ccd6e1; --accent: #145fc1; --active: #e2edff; --ruby: #805016; }
+@media (prefers-color-scheme: dark) { :root { --bg: #111925; --panel: #1a2636; --text: #edf3fb; --muted: #b1c0d3; --border: #42546a; --accent: #94beff; --active: #263f64; --ruby: #f0c28e; } }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+#watch { display: contents; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding-bottom: env(safe-area-inset-bottom); }
+#home, #settings, .watch-body { max-width: 760px; margin: auto; padding: 20px; }
+h1 { font-size: 1.5rem; line-height: 1.35; } h1 small { display: block; font-size: 1rem; font-weight: normal; margin-top: 6px; color: var(--muted); } h2 { font-size: 1.15rem; }
+a { color: var(--accent); } label { display: block; } input, select, button { font: inherit; color: var(--text); border: 1px solid var(--border); border-radius: 9px; background: var(--panel); }
+input:not([type=checkbox]) { width: 100%; min-height: 46px; padding: 9px 12px; margin: 5px 0 14px; } button { cursor: pointer; min-height: 44px; padding: 8px 13px; } button:hover { border-color: var(--accent); } button:disabled { opacity: .5; cursor: default; } :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+#open-form > button, #settings-form > button { background: var(--accent); color: var(--bg); } .hint, #status, #settings-status { color: var(--muted); font-size: .9rem; } #url-error, #status.error, #storage-warning { color: light-dark(#a12424, #ffabab); }
+#recent { padding-left: 22px; } #recent li { margin: 12px 0; } #recent small { display: block; color: var(--muted); } .key-row { display: flex; align-items: baseline; gap: 8px; } .key-row input { flex: 1; min-width: 0; }
+#settings { margin-top: 12px; border-top: 1px solid var(--border); } summary { cursor: pointer; padding: 8px 0; } #settings-form { padding-top: 12px; }
+#sticky-player { position: sticky; top: 0; padding-top: env(safe-area-inset-top); z-index: 10; background: #000; }
+#player-box { width: 100%; max-width: 760px; margin: auto; aspect-ratio: 16 / 9; max-height: 35vh; max-height: 35dvh; position: relative; } #player, #player-box iframe { position: absolute; width: 100%; height: 100%; border: 0; }
+nav { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: .8rem; }
+#video-title { font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 760px; margin: auto; padding: 4px 10px; background: var(--panel); color: var(--text); }
+.controls { display: flex; align-items: center; flex-wrap: nowrap; gap: 6px; padding: 3px 8px; font-size: .76rem; background: var(--panel); color: var(--text); max-width: 760px; margin: auto; overflow-x: auto; }
+.controls > * { flex-shrink: 0; } .controls label { display: flex; align-items: center; gap: 3px; white-space: nowrap; min-height: 44px; }
+.controls button { padding: 5px 7px; } select { min-height: 44px; padding: 4px; } input[type=checkbox] { width: 18px; height: 18px; margin: 0; }
+.watch-body { padding: 10px 14px; } #status { margin: 6px 0 2px; } .status-tools { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .75rem; color: var(--muted); } .status-tools button { font-size: .8rem; }
+#skipped { font-size: .8rem; color: var(--muted); } .backup-tools { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; } .backup-tools label { margin-top: 12px; }
+#sentences { list-style: none; padding: 0; margin: 10px 0; } #sentences li { margin-bottom: 12px; }
+.sentence { width: 100%; text-align: left; display: block; padding: 15px 14px; border-left: 4px solid transparent; line-height: 1.9; overflow-wrap: anywhere; }
+.sentence.active { background: var(--active); border-left-color: var(--accent); } .en { display: block; font-size: 1.13rem; } .ja { display: block; font-size: .94rem; line-height: 1.7; margin-top: 10px; color: var(--muted); } .time { display: block; font-size: .75rem; color: var(--muted); }
+/* Under-word annotations remain visible independently of the sentence translation. */
+ruby { display: inline-flex; flex-direction: column; vertical-align: top; align-items: center; line-height: 1.6; margin: 0 2px; } rt { display: block; font-size: .65rem; line-height: 1.25; color: var(--ruby); } .hide-ja .ja { display: none; }
+@media (min-width: 800px) { .watch-body { padding-top: 25px; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }

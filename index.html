@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#172b45">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="DualSub">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>DualSub — 英語ポッドキャスト</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="lib/core.js"></script>
+  <script defer src="lib/gemini.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <main id="home">
+    <h1>DualSub <small>英語を、文ごとに。</small></h1>
+    <p>YouTube の英語ポッドキャストを、和訳と単語の意味で読み進めます。</p>
+    <form id="open-form">
+      <label for="video-url">YouTube の URL</label>
+      <input id="video-url" type="text" inputmode="url" placeholder="https://youtu.be/…" required>
+      <button type="submit">動画を開く</button>
+      <p id="url-error" role="alert"></p>
+    </form>
+    <section aria-labelledby="recent-heading"><h2 id="recent-heading">最近見た動画</h2><ul id="recent"></ul></section>
+  </main>
+  <section id="watch" hidden aria-label="動画と字幕">
+    <div id="sticky-player">
+      <div id="player-box"><div id="player"></div></div>
+      <h1 id="video-title">英語ポッドキャスト</h1>
+      <div class="controls">
+        <label><input id="hide-ja" type="checkbox"> 和訳OFF</label>
+        <select id="speed" aria-label="再生速度"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option></select>
+        <button id="repeat" type="button" title="今の文をもう一度">もう一度</button>
+        <label><input id="stop-each" type="checkbox"> 1文停止</label>
+      </div>
+    </div>
+    <div class="watch-body">
+      <nav><a href="./index.html">← 動画を選ぶ</a><a id="youtube-link" target="_blank" rel="noopener">YouTube で開く ↗</a></nav>
+      <p id="status" role="status" aria-live="polite">プレーヤーを読み込み中…</p>
+      <div class="status-tools"><small id="today-count">今日の送信：0回</small><button id="resume" type="button" hidden>翻訳を再開</button></div>
+      <p id="skipped" hidden></p>
+      <p id="storage-warning" hidden>保存領域を使えません。字幕・再生位置はこの画面を閉じると失われる場合があります。</p>
+      <ol id="sentences" aria-label="英文と和訳"></ol>
+    </div>
+  </section>
+  <details id="settings">
+    <summary>設定 · Gemini API</summary>
+    <form id="settings-form">
+      <label for="api-key">Gemini API キー</label>
+      <div class="key-row"><input id="api-key" type="password" autocomplete="off" spellcheck="false"><button id="show-key" type="button" aria-pressed="false">表示</button></div>
+      <p class="hint">キーはこのブラウザの localStorage にだけ保存します。Google AI Studio の無料枠プロジェクトのキーを使用してください。</p>
+      <label for="model">モデル</label><input id="model" value="gemini-3.5-flash-lite" required spellcheck="false">
+      <label for="fallback">予備モデル</label><input id="fallback" value="gemini-3.1-flash-lite" required spellcheck="false">
+      <button type="submit">設定を保存</button><p id="settings-status" role="status"></p>
+    </form>
+    <div class="backup-tools"><button id="export" type="button">字幕を書き出す（JSON）</button><label for="import">字幕を読み込む（JSON）</label><input id="import" type="file" accept=".json,application/json"><p id="backup-status" role="status"></p></div>
+  </details>
+</body>
+</html>
