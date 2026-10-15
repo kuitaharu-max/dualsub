@@ -112,7 +112,7 @@
   }); });
   $('listening-continue').addEventListener('click', function () { listeningEvent({ type: 'continue' }); });
   $('repeat').disabled = true;
-  $('repeat').addEventListener('click', function () { var t = C.repeatTarget(cache.sentences, active, position); if (t !== null) seek(t); });
+  $('repeat').addEventListener('click', function () { var t = listeningSettings.enabled && listeningState.sentence !== null ? listeningState.sentence : C.repeatTarget(cache.sentences, active, position); if (t !== null) seek(t); });
   $('resume').addEventListener('click', function () { resumeTranslation(true); });
   ['touchstart', 'touchmove', 'wheel', 'pointerdown'].forEach(function (type) {
     window.addEventListener(type, function () { manualUntil = Date.now() + 5000; }, { passive: true });
@@ -259,7 +259,7 @@
       active = index;
       if (active >= 0) { buttons[active].firstChild.classList.add('active'); buttons[active].firstChild.setAttribute('aria-current', 'true'); }
     }
-    $('repeat').disabled = active < 0 || !ready;
+    $('repeat').disabled = (active < 0 && !(listeningSettings.enabled && listeningState.sentence !== null)) || !ready;
     if (active >= 0 && active !== lastScrolled && Date.now() >= manualUntil) {
       var rect = buttons[active].getBoundingClientRect();
       var top = $('sticky-player').getBoundingClientRect().bottom + 16;
